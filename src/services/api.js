@@ -126,3 +126,18 @@ export async function getDietMealType() {
 
   return [];
 }
+
+export async function getDietOrderDetail({ mealId, ipid, orderdate, orderFor }) {
+  const res = await api.post('/Diet/getDietOrderDetail', {
+    mealId,
+    ipid,
+    orderdate,
+    orderFor,
+  });
+
+  const data = res?.data;
+  console.log('DIET ORDER DETAIL API:', data);
+
+  if (Array.isArray(data?.response)) return data.response;
+  return [];
+}

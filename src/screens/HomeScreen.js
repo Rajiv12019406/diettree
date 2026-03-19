@@ -298,7 +298,9 @@ export default function HomeScreen({ navigation }) {
 
                   <Pressable
                      
-                    onPress={() => navigation.navigate('DietScreen', { patient: item })}
+                    onPress={() =>
+                      navigation.navigate('DietScreen', { patient: item, orderDate: date })
+                    }
                     style={styles.arrowStub}
                   >
                     <Text style={{ color: '#fff', fontWeight: '1900' }}>{'>'}</Text>
