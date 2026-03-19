@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   Pressable,
   TextInput,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { getDietMealType, getDietOrderDetail } from '../services/api';
 
@@ -23,8 +25,11 @@ export default function DietScreen({ route }) {
   const [itemsLoadingByKey, setItemsLoadingByKey] = useState({});
   const [itemsErrorByKey, setItemsErrorByKey] = useState({});
   const [selectedItemIdsByKey, setSelectedItemIdsByKey] = useState({});
+  const [quantityByKey, setQuantityByKey] = useState({}); // { "mealKey": { "itemId": number } }
   const [submittingByKey, setSubmittingByKey] = useState({});
   const [submitResultByKey, setSubmitResultByKey] = useState({});
+  const [cart, setCart] = useState([]); // [{ mealId, mealName, orderFor, items: [{ itemId, itemName, quantity }], remarks }]
+  const [cartVisible, setCartVisible] = useState(false);
 
   const ipid = useMemo(() => {
     const val = patient?.ipid ?? patient?.IPID ?? patient?.patientId ?? patient?.PatientId;
@@ -169,9 +174,16 @@ export default function DietScreen({ route }) {
 
   function toggleSelectedItem(mealId, itemId) {
     const key = toScopedKey(mealId);
+    const isCurrentlySelected = !!selectedItemIdsByKey?.[key]?.[itemId];
     setSelectedItemIdsByKey(prev => {
       const current = prev[key] || {};
-      const next = { ...current, [itemId]: !current[itemId] };
+      const next = { ...current, [itemId]: !isCurrentlySelected };
+      return { ...prev, [key]: next };
+    });
+    setQuantityByKey(prev => {
+      const current = prev[key] || {};
+      const next = { ...current, [itemId]: isCurrentlySelected ? 0 : 1 };
+      if (next[itemId] === 0) delete next[itemId];
       return { ...prev, [key]: next };
     });
   }
@@ -181,33 +193,117 @@ export default function DietScreen({ route }) {
     return !!selectedItemIdsByKey?.[key]?.[itemId];
   }
 
-  async function submitMeal(mealId) {
+  function getQuantity(mealId, itemId) {
+    const key = toScopedKey(mealId);
+    const q = quantityByKey?.[key]?.[itemId];
+    return typeof q === 'number' ? q : 0;
+  }
+
+  function incrementQuantity(mealId, itemId) {
+    const key = toScopedKey(mealId);
+    setQuantityByKey(prev => {
+      const current = prev[key] || {};
+      const q = (current[itemId] ?? 0) + 1;
+      return { ...prev, [key]: { ...current, [itemId]: q } };
+    });
+  }
+
+  function decrementQuantity(mealId, itemId) {
+    const key = toScopedKey(mealId);
+    const currentQty = quantityByKey?.[key]?.[itemId] ?? 0;
+    const newQty = Math.max(0, currentQty - 1);
+
+    setQuantityByKey(prev => {
+      const current = prev[key] || {};
+      const next = { ...current, [itemId]: newQty };
+      if (newQty === 0) delete next[itemId];
+      return { ...prev, [key]: next };
+    });
+
+    if (newQty === 0) {
+      setSelectedItemIdsByKey(prev => {
+        const current = prev[key] || {};
+        const next = { ...current };
+        delete next[itemId];
+        return { ...prev, [key]: next };
+      });
+    }
+  }
+
+  function addToCart(mealId, mealName, itemsWithQty, remark) {
+    const orderFor = getOrderFor();
+    const cartKey = `${orderFor}:${mealId}`;
+    const baseItems = itemsByKey[toScopedKey(mealId)] || [];
+    const items = itemsWithQty.map(({ itemId, quantity }) => {
+      const apiItem = baseItems.find(
+        it => String(it?.id ?? it?.itemId ?? it?.ID) === String(itemId),
+      );
+      const itemName = apiItem
+        ? getItemName(apiItem, baseItems.indexOf(apiItem))
+        : `Item ${itemId}`;
+      return { itemId: Number(itemId), itemName, quantity };
+    });
+
+    setCart(prev => {
+      const rest = prev.filter(
+        c => !(String(c.mealId) === String(mealId) && c.orderFor === orderFor),
+      );
+      return [...rest, { mealId, mealName, orderFor, items, remarks: remark }];
+    });
+  }
+
+  function removeFromCart(mealId, orderFor) {
+    setCart(prev =>
+      prev.filter(c => !(String(c.mealId) === String(mealId) && c.orderFor === orderFor)),
+    );
+  }
+
+  async function submitMeal(mealId, mealName) {
     const key = toScopedKey(mealId);
     setSubmittingByKey(prev => ({ ...prev, [key]: true }));
     setSubmitResultByKey(prev => ({ ...prev, [key]: '' }));
 
     try {
-      const selectedMap = selectedItemIdsByKey?.[key] || {};
-      const selectedIds = Object.keys(selectedMap).filter(id => selectedMap[id]);
+      const qtyMap = quantityByKey?.[key] || {};
+      const itemsWithQty = Object.entries(qtyMap)
+        .filter(([, q]) => q > 0)
+        .map(([id, qty]) => ({ itemId: id, quantity: qty }));
       const remark = getRemarks(mealId);
 
-      const payload = {
-        mealId: Number(mealId),
-        ipid,
-        orderdate: normalizedOrderDate,
-        orderFor: getOrderFor(),
-        remarks: remark,
-        selectedItemIds: selectedIds.map(id => Number(id)),
-      };
+      if (itemsWithQty.length === 0) {
+        setSubmitResultByKey(prev => ({ ...prev, [key]: 'Select items first' }));
+        return;
+      }
 
-      console.log('SUBMIT MEAL PAYLOAD:', payload);
-      setSubmitResultByKey(prev => ({ ...prev, [key]: 'Saved (local)' }));
+      addToCart(mealId, mealName, itemsWithQty, remark);
+      setSubmitResultByKey(prev => ({ ...prev, [key]: 'Added to cart' }));
     } catch (e) {
       const msg = e?.message || 'Submit failed.';
       setSubmitResultByKey(prev => ({ ...prev, [key]: String(msg) }));
     } finally {
       setSubmittingByKey(prev => ({ ...prev, [key]: false }));
     }
+  }
+
+  function submitAllToCart() {
+    // Adds/updates all meals (current tab) that have qty > 0
+    meals.forEach((meal, idx) => {
+      const mealId = getMealId(meal, idx);
+      const mealName = getMealName(meal, idx);
+      const key = toScopedKey(mealId);
+
+      const qtyMap = quantityByKey?.[key] || {};
+      const itemsWithQty = Object.entries(qtyMap)
+        .filter(([, q]) => q > 0)
+        .map(([id, qty]) => ({ itemId: id, quantity: qty }));
+
+      if (itemsWithQty.length === 0) return;
+
+      const remark = getRemarks(mealId);
+      addToCart(mealId, mealName, itemsWithQty, remark);
+    });
+
+    setCartVisible(true);
   }
   
 
@@ -223,8 +319,9 @@ export default function DietScreen({ route }) {
         
       </View>
 
-      {/* 🔥 Patient / Attendant toggle */}
-      <View style={styles.tabWrap}>
+      {/* 🔥 Patient / Attendant toggle + Cart icon */}
+      <View style={styles.topRow}>
+        <View style={styles.tabWrap}>
         <Pressable
           onPress={() => {
             setActiveTab('Patient');
@@ -263,7 +360,78 @@ export default function DietScreen({ route }) {
             Attendant
           </Text>
         </Pressable>
+        </View>
+
+        <Pressable
+          onPress={() => setCartVisible(true)}
+          hitSlop={10}
+          style={({ pressed }) => [styles.cartIconBtn, pressed && { opacity: 0.8 }]}
+        >
+          <Text style={styles.cartIcon}>🛒</Text>
+          {cart.length > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>{cart.length}</Text>
+            </View>
+          )}
+        </Pressable>
       </View>
+
+      <Modal
+        visible={cartVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCartVisible(false)}
+      >
+        <Pressable style={styles.cartBackdrop} onPress={() => setCartVisible(false)}>
+          <Pressable style={styles.cartModal} onPress={() => {}}>
+            <View style={styles.cartModalHeader}>
+              <Text style={styles.cartTitle}>Cart</Text>
+              <Pressable
+                onPress={() => setCartVisible(false)}
+                hitSlop={10}
+                style={({ pressed }) => [styles.cartCloseBtn, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={styles.cartCloseText}>Close</Text>
+              </Pressable>
+            </View>
+
+            {cart.length === 0 ? (
+              <Text style={styles.emptyText}>Cart is empty.</Text>
+            ) : (
+              <ScrollView style={{ maxHeight: 420 }}>
+                {cart.map((entry, idx) => (
+                  <View
+                    key={`${entry.mealId}-${entry.orderFor}-${idx}`}
+                    style={styles.cartCard}
+                  >
+                    <View style={styles.cartCardHeader}>
+                      <Text style={styles.cartMealName}>{entry.mealName}</Text>
+                      <Pressable
+                        onPress={() => removeFromCart(entry.mealId, entry.orderFor)}
+                        hitSlop={8}
+                        style={({ pressed }) => [
+                          styles.cartRemoveBtn,
+                          pressed && { opacity: 0.7 },
+                        ]}
+                      >
+                        <Text style={styles.cartRemoveText}>Remove</Text>
+                      </Pressable>
+                    </View>
+                    {entry.items.map(it => (
+                      <Text key={it.itemId} style={styles.cartItemRow}>
+                        • {it.itemName} × {it.quantity}
+                      </Text>
+                    ))}
+                    {!!entry.remarks && (
+                      <Text style={styles.cartRemarks}>Remarks: {entry.remarks}</Text>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* 🔥 Meal List */}
       {loading ? (
@@ -318,19 +486,47 @@ export default function DietScreen({ route }) {
                         renderItem={({ item: it, index: idx }) => {
                           const itemId = String(it?.id ?? it?.itemId ?? it?.ID ?? idx);
                           const checked = isSelected(mealId, itemId);
+                          const qty = getQuantity(mealId, itemId);
                           return (
-                            <Pressable
-                              onPress={() => toggleSelectedItem(mealId, itemId)}
-                              style={styles.itemRow}
-                            >
-                              <View
-                                style={[
-                                  styles.checkbox,
-                                  checked ? styles.checkboxChecked : null,
-                                ]}
-                              />
-                              <Text style={styles.itemName}>{getItemName(it, idx)}</Text>
-                            </Pressable>
+                            <View style={styles.itemRow}>
+                              <Pressable
+                                onPress={() => toggleSelectedItem(mealId, itemId)}
+                                style={styles.itemLeft}
+                              >
+                                <View
+                                  style={[
+                                    styles.checkbox,
+                                    checked ? styles.checkboxChecked : null,
+                                  ]}
+                                />
+                                <Text style={styles.itemName}>{getItemName(it, idx)}</Text>
+                              </Pressable>
+                              {checked && (
+                                <View style={styles.qtyWrap}>
+                                  <Pressable
+                                    onPress={() => decrementQuantity(mealId, itemId)}
+                                    style={({ pressed }) => [
+                                      styles.qtyBtn,
+                                      qty === 0 && styles.qtyBtnDisabled,
+                                      pressed && qty > 0 && styles.qtyBtnPressed,
+                                    ]}
+                                    disabled={qty === 0}
+                                  >
+                                    <Text style={[styles.qtyBtnText, qty === 0 && styles.qtyBtnTextDisabled]}>−</Text>
+                                  </Pressable>
+                                  <Text style={styles.qtyText}>{qty}</Text>
+                                  <Pressable
+                                    onPress={() => incrementQuantity(mealId, itemId)}
+                                    style={({ pressed }) => [
+                                      styles.qtyBtn,
+                                      pressed && styles.qtyBtnPressed,
+                                    ]}
+                                  >
+                                    <Text style={styles.qtyBtnText}>＋</Text>
+                                  </Pressable>
+                                </View>
+                              )}
+                            </View>
                           );
                         }}
                       />
@@ -350,7 +546,7 @@ export default function DietScreen({ route }) {
                     />
 
                     <Pressable
-                      onPress={() => submitMeal(mealId)}
+                      onPress={() => submitMeal(mealId, mealName)}
                       disabled={submittingByKey[key] || !ipid || !normalizedOrderDate}
                       style={({ pressed }) => [
                         styles.mealSubmitBtn,
@@ -373,13 +569,13 @@ export default function DietScreen({ route }) {
               </View>
             );
           }}
+          ListFooterComponent={
+            <Pressable onPress={submitAllToCart} style={styles.submitBtn}>
+              <Text style={styles.submitText}>Submit All</Text>
+            </Pressable>
+          }
         />
       )}
-
-      {/* 🔥 Footer Button */}
-      <Pressable style={styles.submitBtn}>
-        <Text style={styles.submitText}>Submit All</Text>
-      </Pressable>
 
     </View>
   );
@@ -403,13 +599,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold'
   },
 
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+
   tabWrap: {
     flexDirection: 'row',
     alignSelf: 'center',
     backgroundColor: '#E5E7EB',
     borderRadius: 8,
     overflow: 'hidden',
-    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#D1D5DB',
   },
@@ -427,6 +629,67 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {
     color: '#fff',
+  },
+
+  cartIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartIcon: {
+    fontSize: 20,
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  cartBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    padding: 16,
+    justifyContent: 'flex-start',
+    paddingTop: 60,
+  },
+  cartModal: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 12,
+  },
+  cartModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  cartCloseBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  cartCloseText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#111827',
   },
 
   row: {
@@ -495,6 +758,7 @@ const styles = StyleSheet.create({
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 10,
     paddingHorizontal: 10,
     borderWidth: 1,
@@ -502,6 +766,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#fff',
     marginBottom: 8,
+  },
+
+  itemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
 
   checkbox: {
@@ -519,8 +789,46 @@ const styles = StyleSheet.create({
   },
 
   itemName: {
+    flex: 1,
     color: '#111827',
     fontWeight: '600',
+  },
+
+  qtyWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  qtyBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyBtnPressed: {
+    opacity: 0.8,
+  },
+  qtyBtnDisabled: {
+    opacity: 0.4,
+  },
+  qtyBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  qtyBtnTextDisabled: {
+    color: '#9CA3AF',
+  },
+  qtyText: {
+    minWidth: 28,
+    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111827',
   },
 
   emptyText: {
@@ -576,5 +884,50 @@ const styles = StyleSheet.create({
 
   submitText: {
     fontWeight: 'bold'
-  }
+  },
+
+  cartTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  cartCard: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 12,
+    marginBottom: 10,
+  },
+  cartCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  cartMealName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  cartRemoveBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  cartRemoveText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#B91C1C',
+  },
+  cartItemRow: {
+    fontSize: 14,
+    color: '#374151',
+    marginBottom: 4,
+  },
+  cartRemarks: {
+    marginTop: 6,
+    fontSize: 13,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
 });

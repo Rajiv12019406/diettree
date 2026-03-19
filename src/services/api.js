@@ -121,7 +121,7 @@ export async function getDietMealType() {
   console.log('MEAL TYPE API:', data);
 
   if (Array.isArray(data?.response)) {
-    return data.response; // ✅ returns array like [{id, name}]
+    return data.response; // returns array like [{id, name}]
   }
 
   return [];
@@ -137,6 +137,7 @@ export async function getDietOrderDetail({ mealId, ipid, orderdate, orderFor }) 
 
   const data = res?.data;
   console.log('DIET ORDER DETAIL API:', data);
+  console.log('order for',orderFor);
 
   if (Array.isArray(data?.response)) return data.response;
   return [];
