@@ -142,3 +142,10 @@ export async function getDietOrderDetail({ mealId, ipid, orderdate, orderFor }) 
   if (Array.isArray(data?.response)) return data.response;
   return [];
 }
+
+export async function addDietOrder(payload) {
+  const res = await api.post('/Diet/addDietOrder', payload);
+  const data = res?.data;
+  console.log('ADD DIET ORDER API:', data);
+  return data;
+}

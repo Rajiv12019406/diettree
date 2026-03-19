@@ -10,7 +10,7 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-import { getDietMealType, getDietOrderDetail } from '../services/api';
+import { getDietMealType, getDietOrderDetail, addDietOrder } from '../services/api';
 
 export default function DietScreen({ route }) {
   const { patient, orderDate } = route.params || {};
@@ -30,6 +30,8 @@ export default function DietScreen({ route }) {
   const [submitResultByKey, setSubmitResultByKey] = useState({});
   const [cart, setCart] = useState([]); // [{ mealId, mealName, orderFor, items: [{ itemId, itemName, quantity }], remarks }]
   const [cartVisible, setCartVisible] = useState(false);
+  const [addDietLoading, setAddDietLoading] = useState(false);
+  const [addDietError, setAddDietError] = useState('');
 
   const ipid = useMemo(() => {
     const val = patient?.ipid ?? patient?.IPID ?? patient?.patientId ?? patient?.PatientId;
@@ -258,6 +260,78 @@ export default function DietScreen({ route }) {
     );
   }
 
+  async function submitDietOrder() {
+    if (cart.length === 0) return;
+    if (!ipid || !normalizedOrderDate) {
+      setAddDietError('Missing patient or order date.');
+      return;
+    }
+
+    setAddDietLoading(true);
+    setAddDietError('');
+
+    try {
+      const bedId = patient?.bedId ?? patient?.bedno ?? patient?.bedNo ?? '';
+      const locationid = patient?.locationId ?? patient?.locationID ?? global.locationID ?? 0;
+
+      const byOrderFor = {};
+      cart.forEach(entry => {
+        const of = entry.orderFor;
+        if (!byOrderFor[of]) byOrderFor[of] = [];
+        byOrderFor[of].push(entry);
+      });
+
+      for (const orderfor of Object.keys(byOrderFor)) {
+        const entries = byOrderFor[orderfor];
+        const dietorderdetail = [];
+        const mealtype = [];
+
+        entries.forEach(entry => {
+          mealtype.push({
+            mealtypeid: Number(entry.mealId),
+            remark: entry.remarks || '',
+          });
+          entry.items.forEach(it => {
+            dietorderdetail.push({
+              mealId: Number(entry.mealId),
+              itemid: Number(it.itemId),
+              quantity: it.quantity,
+              itemRemark: entry.remarks || '',
+            });
+          });
+        });
+
+        const payload = {
+          ipid,
+          bedId: Number(bedId) || bedId,
+          locationid: Number(locationid) || locationid,
+          orderfor: Number(orderfor),
+          operatorid: 1,
+          orderdate: normalizedOrderDate,
+          dietorderdetail,
+          mealtype,
+          removeCheck: true,
+          isChargeable: 0,
+          chkmeal: '',
+        };
+
+        await addDietOrder(payload);
+      }
+
+      setCart([]);
+      setCartVisible(false);
+    } catch (e) {
+      const msg =
+        e?.response?.data?.message ||
+        e?.response?.data?.error ||
+        e?.message ||
+        'Failed to submit diet order.';
+      setAddDietError(String(msg));
+    } finally {
+      setAddDietLoading(false);
+    }
+  }
+
   async function submitMeal(mealId, mealName) {
     const key = toScopedKey(mealId);
     setSubmittingByKey(prev => ({ ...prev, [key]: true }));
@@ -310,7 +384,7 @@ export default function DietScreen({ route }) {
   return (
     <View style={styles.container}>
 
-      {/* 🔥 Header */}
+    
       <View style={styles.header}>
         
         <Text style={styles.name}>Name : {patient?.patientName}</Text>
@@ -319,7 +393,7 @@ export default function DietScreen({ route }) {
         
       </View>
 
-      {/* 🔥 Patient / Attendant toggle + Cart icon */}
+    
       <View style={styles.topRow}>
         <View style={styles.tabWrap}>
         <Pressable
@@ -398,42 +472,62 @@ export default function DietScreen({ route }) {
             {cart.length === 0 ? (
               <Text style={styles.emptyText}>Cart is empty.</Text>
             ) : (
-              <ScrollView style={{ maxHeight: 420 }}>
-                {cart.map((entry, idx) => (
-                  <View
-                    key={`${entry.mealId}-${entry.orderFor}-${idx}`}
-                    style={styles.cartCard}
-                  >
-                    <View style={styles.cartCardHeader}>
-                      <Text style={styles.cartMealName}>{entry.mealName}</Text>
-                      <Pressable
-                        onPress={() => removeFromCart(entry.mealId, entry.orderFor)}
-                        hitSlop={8}
-                        style={({ pressed }) => [
-                          styles.cartRemoveBtn,
-                          pressed && { opacity: 0.7 },
-                        ]}
-                      >
-                        <Text style={styles.cartRemoveText}>Remove</Text>
-                      </Pressable>
+              <>
+                <ScrollView style={{ maxHeight: 420 }}>
+                  {cart.map((entry, idx) => (
+                    <View
+                      key={`${entry.mealId}-${entry.orderFor}-${idx}`}
+                      style={styles.cartCard}
+                    >
+                      <View style={styles.cartCardHeader}>
+                        <Text style={styles.cartMealName}>{entry.mealName}</Text>
+                        <Pressable
+                          onPress={() => removeFromCart(entry.mealId, entry.orderFor)}
+                          hitSlop={8}
+                          style={({ pressed }) => [
+                            styles.cartRemoveBtn,
+                            pressed && { opacity: 0.7 },
+                          ]}
+                        >
+                          <Text style={styles.cartRemoveText}>Remove</Text>
+                        </Pressable>
+                      </View>
+                      {entry.items.map(it => (
+                        <Text key={it.itemId} style={styles.cartItemRow}>
+                          • {it.itemName} × {it.quantity}
+                        </Text>
+                      ))}
+                      {!!entry.remarks && (
+                        <Text style={styles.cartRemarks}>Remarks: {entry.remarks}</Text>
+                      )}
                     </View>
-                    {entry.items.map(it => (
-                      <Text key={it.itemId} style={styles.cartItemRow}>
-                        • {it.itemName} × {it.quantity}
-                      </Text>
-                    ))}
-                    {!!entry.remarks && (
-                      <Text style={styles.cartRemarks}>Remarks: {entry.remarks}</Text>
-                    )}
-                  </View>
-                ))}
-              </ScrollView>
+                  ))}
+                </ScrollView>
+                {!!addDietError && (
+                  <Text style={styles.cartError}>{addDietError}</Text>
+                )}
+                <Pressable
+                  onPress={submitDietOrder}
+                  disabled={addDietLoading}
+                  style={({ pressed }) => [
+                    styles.addDietBtn,
+                    addDietLoading && styles.addDietBtnDisabled,
+                    pressed && !addDietLoading && { opacity: 0.9 },
+                  ]}
+                >
+                  {addDietLoading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.addDietBtnText}>Add Diet</Text>
+                  )}
+                </Pressable>
+              </>
             )}
           </Pressable>
         </Pressable>
       </Modal>
 
-      {/* 🔥 Meal List */}
+      
       {loading ? (
         <ActivityIndicator />
       ) : (
@@ -929,5 +1023,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B7280',
     fontStyle: 'italic',
+  },
+  cartError: {
+    marginTop: 10,
+    color: '#B91C1C',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  addDietBtn: {
+    marginTop: 14,
+    height: 46,
+    borderRadius: 10,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addDietBtnDisabled: {
+    opacity: 0.7,
+  },
+  addDietBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
   },
 });
