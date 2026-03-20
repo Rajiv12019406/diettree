@@ -51,7 +51,7 @@ export default function AppNavigator() {
         <Stack.Screen
           name="Login"
           component={LoginScreen}
-          options={{ title: 'Login', headerBackVisible: false }}
+          options={{ headerShown: false, headerBackVisible: false }}
         />
         <Stack.Screen
           name="Home"
