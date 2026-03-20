@@ -6,11 +6,17 @@ import {
   FlatList,
   ActivityIndicator,
   Pressable,
+  Image,
   TextInput,
   Modal,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { getDietMealType, getDietOrderDetail, addDietOrder } from '../services/api';
+
+const DEFAULT_HOSPITAL_LOGO = require('../images/triotree-technologies-original.webp');
+const DEFAULT_HOSPITAL_NAME = 'Testing Hospital';
+const DEFAULT_HOSPITAL_TAGLINE = 'IT Admin';
 
 export default function DietScreen({ route }) {
   const { patient, orderDate } = route.params || {};
@@ -320,6 +326,7 @@ export default function DietScreen({ route }) {
 
       setCart([]);
       setCartVisible(false);
+      Alert.alert('Success', 'Diet order submitted successfully.');
     } catch (e) {
       const msg =
         e?.response?.data?.message ||
@@ -327,6 +334,7 @@ export default function DietScreen({ route }) {
         e?.message ||
         'Failed to submit diet order.';
       setAddDietError(String(msg));
+      Alert.alert('Error', String(msg));
     } finally {
       setAddDietLoading(false);
     }
@@ -383,8 +391,31 @@ export default function DietScreen({ route }) {
 
   return (
     <View style={styles.container}>
+      <View style={styles.bg} pointerEvents="none">
+        <View style={styles.bgBase} />
+        <View style={styles.bgBlob1} />
+        <View style={styles.bgBlob2} />
+        <View style={styles.bgBlob3} />
+        <View style={styles.bgWhiteCurve} />
+      </View>
 
-    
+      <View style={styles.brandHeader}>
+        <View style={styles.brandRow}>
+          <Image
+            source={DEFAULT_HOSPITAL_LOGO}
+            style={styles.brandLogo}
+            resizeMode="contain"
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.brandTitle}>{DEFAULT_HOSPITAL_NAME}</Text>
+            {!!DEFAULT_HOSPITAL_TAGLINE && (
+              <Text style={styles.brandSubtitle}>{`'${DEFAULT_HOSPITAL_TAGLINE}'`}</Text>
+            )}
+            <Text style={styles.pageTitle}>Diet Plan</Text>
+          </View>
+        </View>
+      </View>
+
       <View style={styles.header}>
         
         <Text style={styles.name}>Name : {patient?.patientName}</Text>
@@ -678,26 +709,127 @@ export default function DietScreen({ route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
-    padding: 12
+    backgroundColor: 'transparent',
+  },
+  bg: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  bgBase: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#0EA5E9',
+  },
+  bgBlob1: {
+    position: 'absolute',
+    top: -100,
+    left: -120,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: '#38BDF8',
+    opacity: 0.55,
+  },
+  bgBlob2: {
+    position: 'absolute',
+    bottom: -140,
+    right: -150,
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: '#0B5FA5',
+    opacity: 0.65,
+  },
+  bgBlob3: {
+    position: 'absolute',
+    top: 140,
+    right: 40,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: '#22C55E',
+    opacity: 0.12,
+  },
+  bgWhiteCurve: {
+    position: 'absolute',
+    left: -80,
+    right: -80,
+    bottom: -160,
+    height: 360,
+    borderRadius: 220,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.92,
+  },
+
+  brandHeader: {
+    marginTop: 0,
+    paddingTop: 22,
+    paddingBottom: 22,
+    paddingHorizontal: 18,
+    backgroundColor: '#0B79C7',
+    borderBottomWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 10,
+    flex: 1,
+  },
+  brandLogo: {
+    width: 68,
+    height: 50,
+  },
+  brandTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  brandSubtitle: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.85)',
+    fontStyle: 'italic',
+  },
+  pageTitle: {
+    marginTop: 4,
+    fontSize: 14,
+    fontWeight: '900',
+    color: 'rgba(255,255,255,0.95)',
   },
 
   header: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginHorizontal: 18,
+    marginTop: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
 
   name: {
-    fontWeight: 'bold'
+    fontWeight: '900',
+    fontSize: 16,
+    marginBottom: 4,
   },
 
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginHorizontal: 18,
+    marginBottom: 12,
   },
 
   tabWrap: {
@@ -715,7 +847,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   tabBtnActive: {
-    backgroundColor: '#F97316',
+    backgroundColor: '#0B79C7',
   },
   tabText: {
     fontWeight: '800',
@@ -806,12 +938,13 @@ const styles = StyleSheet.create({
   },
 
   section: {
-    borderRadius: 8,
+    borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginBottom: 10,
-    backgroundColor: '#fff',
+    marginHorizontal: 18,
+    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
   },
 
   expandBody: {
@@ -943,14 +1076,19 @@ const styles = StyleSheet.create({
   },
 
   mealSubmitBtn: {
-    marginTop: 10,
-    height: 44,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#E5E7EB',
+    marginTop: 12,
+    height: 48,
+    borderRadius: 10,
+    borderWidth: 0,
+    borderColor: 'transparent',
+    backgroundColor: '#0B79C7',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   mealSubmitBtnPressed: {
     opacity: 0.9,
@@ -960,7 +1098,7 @@ const styles = StyleSheet.create({
   },
   mealSubmitText: {
     fontWeight: '900',
-    color: '#111827',
+    color: '#FFFFFF',
   },
   submitHint: {
     marginTop: 6,
@@ -969,15 +1107,23 @@ const styles = StyleSheet.create({
   },
 
   submitBtn: {
-    marginTop: 10,
-    backgroundColor: '#ddd',
-    padding: 14,
+    marginTop: 16,
+    marginHorizontal: 18,
+    backgroundColor: '#0B79C7',
+    paddingVertical: 14,
     alignItems: 'center',
-    borderRadius: 10
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
 
   submitText: {
-    fontWeight: 'bold'
+    fontWeight: '900',
+    color: '#fff',
+    fontSize: 16,
   },
 
   cartTitle: {
@@ -1032,9 +1178,9 @@ const styles = StyleSheet.create({
   },
   addDietBtn: {
     marginTop: 14,
-    height: 46,
-    borderRadius: 10,
-    backgroundColor: '#2563EB',
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#0B79C7',
     alignItems: 'center',
     justifyContent: 'center',
   },

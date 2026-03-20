@@ -9,6 +9,7 @@ import {
   Text,
   TextInput,
   View,
+  Image,
 } from 'react-native';
 
 import { getBedList, getWardList } from '../services/api';
@@ -16,7 +17,9 @@ import { clearToken, getToken } from '../utils/authStorage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect } from '@react-navigation/native';
 
-
+const DEFAULT_HOSPITAL_LOGO = require('../images/triotree-technologies-original.webp');
+const DEFAULT_HOSPITAL_NAME = 'Testing Hospital';
+const DEFAULT_HOSPITAL_TAGLINE = 'IT Admin';
 
 export default function HomeScreen({ navigation }) {
 
@@ -170,22 +173,34 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <View style={styles.brandRow}>
-          <View style={styles.logoMark} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.brandTitle}>Testing Hospital</Text>
-            <Text style={styles.brandSubtitle}>IT Admin</Text>
-          </View>
-        </View>
+      <View style={styles.bg} pointerEvents="none">
+        <View style={styles.bgBase} />
+        <View style={styles.bgBlob1} />
+        <View style={styles.bgBlob2} />
+        <View style={styles.bgBlob3} />
+        <View style={styles.bgWhiteCurve} />
       </View>
 
-      <Pressable
-        onPress={onLogout}
-        style={({ pressed }) => [styles.logoutBar, pressed && styles.pressed]}
-      >
-        <Text style={styles.logoutBarText}>Logout</Text>
-      </Pressable>
+      <View style={styles.header}>
+        <View style={styles.brandRow}>
+          <Image
+            source={DEFAULT_HOSPITAL_LOGO}
+            style={styles.brandLogo}
+            resizeMode="contain"
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.brandTitle}>{DEFAULT_HOSPITAL_NAME}</Text>
+            <Text style={styles.brandSubtitle}>{DEFAULT_HOSPITAL_TAGLINE}</Text>
+          </View>
+        </View>
+
+        <Pressable
+          onPress={onLogout}
+          style={({ pressed }) => [styles.logoutBtn, pressed && styles.pressed]}
+        >
+          <Text style={styles.logoutBtnText}>Logout</Text>
+        </Pressable>
+      </View>
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -376,79 +391,142 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#EEF0F4',
+    backgroundColor: 'transparent',
+  },
+  bg: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  bgBase: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#0EA5E9',
+  },
+  bgBlob1: {
+    position: 'absolute',
+    top: -100,
+    left: -120,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: '#38BDF8',
+    opacity: 0.55,
+  },
+  bgBlob2: {
+    position: 'absolute',
+    bottom: -140,
+    right: -150,
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: '#0B5FA5',
+    opacity: 0.65,
+  },
+  bgBlob3: {
+    position: 'absolute',
+    top: 140,
+    right: 40,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: '#22C55E',
+    opacity: 0.12,
+  },
+  bgWhiteCurve: {
+    position: 'absolute',
+    left: -80,
+    right: -80,
+    bottom: -160,
+    height: 360,
+    borderRadius: 220,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.92,
   },
   header: {
-    backgroundColor: '#F3F4F6',
-    borderBottomWidth: 1,
-    borderBottomColor: '#D1D5DB',
-    paddingHorizontal: 14,
-    paddingTop: 14,
-    paddingBottom: 10,
+    backgroundColor: '#0B79C7',
+    borderBottomWidth: 0,
+    paddingHorizontal: 18,
+    paddingTop: 22,
+    paddingBottom: 22,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
   },
   brandRow: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
   },
-  logoMark: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    backgroundColor: '#D90429',
+  brandLogo: {
+    width: 68,
+    height: 50,
   },
   brandTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FFFFFF',
     lineHeight: 20,
   },
   brandSubtitle: {
-    marginTop: 2,
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.85)',
+    fontStyle: 'italic',
   },
-  logoutBar: {
-    height: 38,
+  logoutBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  logoutBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+    fontSize: 14,
+  },
+  logoutArrowCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EEF0F4',
   },
-  logoutBarText: {
-    fontSize: 14,
+  logoutArrowText: {
+    color: '#fff',
     fontWeight: '900',
-    color: '#111827',
+    fontSize: 16,
   },
   pressed: {
     opacity: 0.9,
   },
   content: {
-    padding: 14,
-    paddingBottom: 24,
-    gap: 12,
+    padding: 18,
+    paddingBottom: 30,
+    gap: 16,
   },
   panel: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#D1D5DB',
     overflow: 'hidden',
+    marginBottom: 4,
   },
   panelTitle: {
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    fontSize: 15,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    fontSize: 16,
     fontWeight: '900',
     color: '#111827',
   },
   form: {
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   label: {
     fontSize: 16,
@@ -505,22 +583,28 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   bedListBtn: {
-    marginTop: 14,
-    height: 48,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#9CA3AF',
+    marginTop: 18,
+    height: 52,
+    borderRadius: 10,
+    borderWidth: 0,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#0B79C7',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   bedListBtnDisabled: {
     opacity: 0.6,
   },
   bedListText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '900',
-    color: '#111827',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   error: {
     marginTop: 12,
@@ -543,8 +627,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
     backgroundColor: '#F3F4F6',
@@ -577,10 +661,17 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   arrowStub: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#BDBDBD',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#0B79C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   modalBackdrop: {
     flex: 1,

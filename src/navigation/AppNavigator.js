@@ -56,14 +56,13 @@ export default function AppNavigator() {
         <Stack.Screen
           name="Home"
           component={HomeScreen}
-          options={{ title: 'Home', headerBackVisible: false }}
+          options={{ headerShown: false, headerBackVisible: false }}
         />
         <Stack.Screen
-         name="DietScreen"
-         component={DietScreen}
-         options={{ title: 'Diet Plan', headerBackVisible: false }}
-         
-         />
+          name="DietScreen"
+          component={DietScreen}
+          options={{ headerShown: false, headerBackVisible: false }}
+        />
 
 
       </Stack.Navigator>
