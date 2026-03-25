@@ -35,7 +35,7 @@ export default function HomeScreen({ navigation }) {
   const [date, setDate] = useState(new Date());
   const [dateText, setDateText] = useState(formatDDMMYYYY(new Date()));
 
-  // 🔥 CHANGE: control picker visibility
+ 
   const [showPicker, setShowPicker] = useState(false);
 
 
@@ -216,7 +216,7 @@ export default function HomeScreen({ navigation }) {
                 style={styles.input}
               />
 
-              {/* 🔥 CHANGE: open date picker */}
+           
               <Pressable
                 style={styles.calendarStub}
                 onPress={() => setShowPicker(true)}
@@ -225,7 +225,7 @@ export default function HomeScreen({ navigation }) {
               </Pressable>
             </View>
 
-            {/* 🔥 CHANGE: date picker UI */}
+           
             {showPicker && (
               <DateTimePicker
                 value={date}
