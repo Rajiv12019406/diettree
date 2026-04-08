@@ -3,7 +3,7 @@ import axios from 'axios';
 import { getToken } from '../utils/authStorage';
 
 export const api = axios.create({
-  baseURL: 'http://206.19.38.15:8002/MobiHISTreeCoreSit/api',
+  baseURL: 'https://mobihis.vrhpune.com/Diet_App/api',
   timeout: 20000,
   headers: {
     'Content-Type': 'application/json',

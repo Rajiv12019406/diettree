@@ -14,8 +14,8 @@ import {
 } from 'react-native';
 import { getDietMealType, getDietOrderDetail, addDietOrder } from '../services/api';
 
-const DEFAULT_HOSPITAL_LOGO = require('../images/triotree-technologies-original.webp');
-const DEFAULT_HOSPITAL_NAME = 'Testing Hospital';
+const DEFAULT_HOSPITAL_LOGO = require('../images/VRH-Logo_Eng.jpg');
+const DEFAULT_HOSPITAL_NAME = 'VishwaRaj Hospital';
 const DEFAULT_HOSPITAL_TAGLINE = 'IT Admin';
 
 export default function DietScreen({ route }) {
@@ -165,6 +165,7 @@ export default function DietScreen({ route }) {
         ipid,
         orderdate: normalizedOrderDate,
         orderFor: getOrderFor(),
+        
       });
       setItemsByKey(prev => ({ ...prev, [key]: data }));
     } catch (e) {

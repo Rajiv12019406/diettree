@@ -17,8 +17,8 @@ import { clearToken, getToken } from '../utils/authStorage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect } from '@react-navigation/native';
 
-const DEFAULT_HOSPITAL_LOGO = require('../images/triotree-technologies-original.webp');
-const DEFAULT_HOSPITAL_NAME = 'Testing Hospital';
+const DEFAULT_HOSPITAL_LOGO = require('../images/VRH-Logo_Eng.jpg');
+const DEFAULT_HOSPITAL_NAME = 'VishwaRaj Hospital';
 const DEFAULT_HOSPITAL_TAGLINE = 'IT Admin';
 
 export default function HomeScreen({ navigation }) {

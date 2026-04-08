@@ -15,10 +15,10 @@ import {
 import { login } from '../services/api';
 import { setToken } from '../utils/authStorage';
 
-const DEFAULT_HOSPITAL_NAME = 'Testing Hospital';
+const DEFAULT_HOSPITAL_NAME = 'VishwaRaj Hospital';
 const DEFAULT_HOSPITAL_TAGLINE = 'Bringing life and life in abundance';
 const FOOTER_TEXT = 'Powered by Trirotee Technologies Pvt. Ltd.';
-const DEFAULT_HOSPITAL_LOGO = require('../images/triotree-technologies-original.webp');
+const DEFAULT_HOSPITAL_LOGO = require('../images/VRH-Logo_Eng.jpg');
 
 function getErrorMessage(err) {
   const apiMessage =
